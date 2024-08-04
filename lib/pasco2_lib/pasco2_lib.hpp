@@ -78,6 +78,7 @@ class PASCO2_Lib {
         uint8_t     getMeasRate();
         uint16_t    getCO2Concentration();
         bool        checkDataReady();
+        uint8_t     getInterruptCfg();
         uint8_t     setInterruptReg(uint8_t int_cfg);
         uint8_t     resetInterruptPin();
         uint8_t     resetAlarmNotif();
