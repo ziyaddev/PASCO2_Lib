@@ -21,6 +21,16 @@ bool PASCO2_Lib::begin(uint8_t addr, TwoWire *wire)
     {
         return false;
     }
+
+    softReset();
+
+    uint8_t device_prod_id;
+    device_prod_id = getDeviceProductId();
+
+    uint8_t revision_id;
+    revision_id = getDeviceRevisionId();
+
+    return true;
 }
 
 uint8_t PASCO2_Lib::read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr)
@@ -86,6 +96,12 @@ uint8_t PASCO2_Lib::getDeviceRevisionId()
     return (rev_id);
 }
 
+void PASCO2_Lib::softReset()
+{
+    // Soft reset the sensor
+    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_RST, 0xA3);
+}
+
 uint8_t PASCO2_Lib::getDeviceStatus()
 {
     return (read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS));
@@ -98,6 +114,17 @@ uint8_t PASCO2_Lib::clearDeviceErrors()
     bits_to_set = XENSIV_PASCO2_REG_SENS_STS_ICCER_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORVS_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORTMP_CLR_MSK;
 
     return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS, bits_to_set));
+}
+
+uint16_t    PASCO2_Lib::getpressureRef()
+{
+    uint16_t pressure_ref = 0;
+    uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
+    uint8_t press_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L);
+
+    pressure_ref = (press_h << 8) | press_l;
+
+    return (pressure_ref);
 }
 
 uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
@@ -115,8 +142,7 @@ uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H, press_to_set_h);
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L, press_to_set_l);
 
-    // Then check if the new value is set correctly
-
+    // Check if the register are set correctly
     uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
     uint8_t press_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L);
     
@@ -126,31 +152,88 @@ uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
     return (pressure_ref_read);
 }
 
-uint16_t    PASCO2_Lib::getpressureRef()
+/**
+ * @brief Get baseline offset compensation configuration
+ * 
+ * @return  0 Automatic Baseline Offset Correction disabled.
+ *          1 Automatic Baseline Offset Correction enabled. The offset is periodically updated at each BOC computation.
+ *          2 forced compensation.
+ */
+uint8_t PASCO2_Lib::getBaselineOffsetCompensationCfg()
 {
-    uint16_t pressure_ref = 0;
-    uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
-    uint8_t press_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L);
+    uint8_t boc_cfg = 0;
+    boc_cfg = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
 
-    pressure_ref = press_h << 8 | press_l;
+    boc_cfg &= (XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_POS);
 
-    return (pressure_ref);
+    return (boc_cfg);
 }
 
+/**
+ * @brief Set baseline offset compensation configuration
+ * 
+ * @param XENSIV_PASCO2_BOC_CFG_DISABLE, XENSIV_PASCO2_BOC_CFG_ENABLE, XENSIV_PASCO2_BOC_CFG_FORCE
+ * @return  0 Automatic Baseline Offset Correction disabled.
+ *          1 Automatic Baseline Offset Correction enabled. The offset is periodically updated at each BOC computation.
+ *          2 forced compensation.
+ */
+uint8_t PASCO2_Lib::setBaselineOffsetCompensationCfg(uint8_t boc_cfg)
+{
+    uint8_t reg_to_set = 0;
+    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+
+    // Reset the 3rd & 4th bits to 0
+    reg_to_set &= ~(XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_MSK);
+
+    // Set register with parameter value
+    reg_to_set |= boc_cfg;
+    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, reg_to_set);
+
+    // Check if the register are set correctly
+    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+
+    return (reg_to_set);
+}
+
+/**
+ * @brief Get the operating mode of the sensor
+ * 
+ * @return uint8_t 0 for IDLE, 1 for SINGLE, 2 for CONTINUOUS
+ */
+uint8_t PASCO2_Lib::getOpMode()
+{
+    uint8_t op_mode = 0;
+    op_mode = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+
+    op_mode &= (XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+
+    return (op_mode);
+}
+
+/**
+ * @brief Set the operating mode of the sensor
+ * 
+ * @param op_mode XENSIV_PASCO2_OP_MODE_IDLE, XENSIV_PASCO2_OP_MODE_SINGLE, XENSIV_PASCO2_OP_MODE_CONTINUOUS
+ * @return uint8_t 
+ */
 uint8_t PASCO2_Lib::setOpMode(uint8_t op_mode)
 {
     // If SINGLE is set new operating mode can't be set until a certain amount of time (maybe 920ms)
-    uint8_t actual_cfg;
-    actual_cfg = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
-    actual_cfg &= ~(1 << 1);
-    actual_cfg &= ~(1 << 0);
-    // Set op mode to IDLE
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, actual_cfg);
-    actual_cfg |= op_mode;
-    // Write new config to register
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, actual_cfg); // default 0x24
+    uint8_t reg_to_set;
+    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
 
-    return (actual_cfg);
+    // Reset the 1st & 2nd bits to 0
+    reg_to_set &= ~(XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK << XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+
+    // Set operating mode
+    reg_to_set |= op_mode;
+    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, reg_to_set);
+
+    // Check if the register are set correctly
+    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+    reg_to_set &= (XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+
+    return (reg_to_set);
 }
 
 uint8_t PASCO2_Lib::setMeasRate(uint16_t meas_rate)
@@ -169,7 +252,7 @@ uint8_t PASCO2_Lib::setMeasRate(uint16_t meas_rate)
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_H, meas_rate_to_set_h);
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_L, meas_rate_to_set_l);
 
-    // Then check if the new value is set correctly
+    // Check if the register are set correctly
     meas_rate_to_set_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_H);
     meas_rate_to_set_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_L);
     
@@ -321,7 +404,7 @@ uint16_t    PASCO2_Lib::setAlarmThreshold(uint16_t alarm_thres)
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_H, reg_to_set_h);
     write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_L, reg_to_set_l);
 
-    // Then check if the new value is set correctly
+    // Check if the register are set correctly
 
     uint8_t alarm_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_H);
     uint8_t alarm_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_L);

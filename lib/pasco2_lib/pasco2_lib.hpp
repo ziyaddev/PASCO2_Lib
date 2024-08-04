@@ -42,6 +42,10 @@
 #define XENSIV_PASCO2_OP_MODE_SINGLE        (1U)
 #define XENSIV_PASCO2_OP_MODE_CONTINUOUS    (2U)
 
+#define XENSIV_PASCO2_BOC_CFG_DISABLE       (0U)
+#define XENSIV_PASCO2_BOC_CFG_ENABLE        (1U)
+#define XENSIV_PASCO2_BOC_CFG_FORCE         (2U)
+
 
 // 000b: Pin INT is inactive.
 // 001b: Pin INT is configured as alarm threshold violation notification
@@ -67,12 +71,16 @@ class PASCO2_Lib {
 
         bool begin(uint8_t addr = XENSIV_PASCO2_I2C_ADDR, TwoWire *wire = &Wire);
 
+        void        softReset();
         uint8_t     getDeviceProductId();
         uint8_t     getDeviceRevisionId();
         uint8_t     getDeviceStatus();
         uint8_t     clearDeviceErrors();
-        uint16_t    setPressureRef(uint16_t press_ref);
         uint16_t    getpressureRef();
+        uint16_t    setPressureRef(uint16_t press_ref);
+        uint8_t     getBaselineOffsetCompensationCfg();
+        uint8_t     setBaselineOffsetCompensationCfg(uint8_t boc_cfg);
+        uint8_t     getOpMode();
         uint8_t     setOpMode(uint8_t op_mode);
         uint8_t     setMeasRate(uint16_t meas_rate);
         uint8_t     getMeasRate();
