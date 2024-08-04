@@ -87,10 +87,6 @@ uint8_t get_device_revision_id()
     rev_id &= XENSIV_PASCO2_REG_PROD_ID_REV_MSK;
     return (rev_id);
 }
-// p p p r  r r r r
-// 0 1 1 0  0 1 0 1
-// &
-// 1 1 1 0  0 0 0 0
 
 uint8_t get_device_status()
 {
