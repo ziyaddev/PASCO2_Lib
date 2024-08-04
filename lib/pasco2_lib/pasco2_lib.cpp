@@ -1,10 +1,6 @@
-#include <Arduino.h>
-#include <Wire.h>
 #include "pasco2_lib.hpp"
 
-/*
 PASCO2_Lib::PASCO2_Lib() {}
-*/
 
 /*!
  * @brief Starts I2C connection
@@ -12,20 +8,22 @@ PASCO2_Lib::PASCO2_Lib() {}
  * @param wire The TwoWire master, defaults to &Wire
  * @return Returns true if successful
  */
-
-/*
 bool PASCO2_Lib::begin(uint8_t addr, TwoWire *wire)
 {
+    if (i2c_dev)
+    {
+        delete i2c_dev; // remove old inteface
+    }
+    i2c_dev = new Adafruit_I2CDevice(addr, wire);
 
+    /* Try to instantiate the I2C device. */
+    if (!i2c_dev->begin(false))
+    {
+        return false;
+    }
 }
 
-PASCO2_Lib::triggerMeasurement(void)
-{
-
-}
-*/
-
-uint8_t read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr)
+uint8_t PASCO2_Lib::read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr)
 {
     // This function writes data to the buffer.
     // Wire.write(uint8_t);
@@ -53,7 +51,7 @@ uint8_t read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr)
         return (0x0);
 }
 
-uint8_t write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data)
+uint8_t PASCO2_Lib::write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data)
 {
     Wire.beginTransmission(i2c_dev_addr);
     Wire.write(i2c_reg_addr);
@@ -62,7 +60,7 @@ uint8_t write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t d
     return Wire.endTransmission(true);
 }
 
-uint8_t get_device_product_id()
+uint8_t PASCO2_Lib::getDeviceProductId()
 {
     // Gets device product ID and return :
     // - 2 for PAS CO2 Gen 1
@@ -75,7 +73,7 @@ uint8_t get_device_product_id()
     return (prod_id);
 }
 
-uint8_t get_device_revision_id()
+uint8_t PASCO2_Lib::getDeviceRevisionId()
 {
     // Gets device revision ID and return :
     // - 1 for revision 1
@@ -88,12 +86,12 @@ uint8_t get_device_revision_id()
     return (rev_id);
 }
 
-uint8_t get_device_status()
+uint8_t PASCO2_Lib::getDeviceStatus()
 {
     return (read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS));
 }
 
-uint8_t clear_device_errors()
+uint8_t PASCO2_Lib::clearDeviceErrors()
 {
     uint8_t bits_to_set;
 
@@ -102,7 +100,7 @@ uint8_t clear_device_errors()
     return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS, bits_to_set));
 }
 
-uint16_t    set_pressure_ref(uint16_t press_ref)
+uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
 {
     // Compute hex values (H & L) from unsigned short int pressure ref
     // Set atmospheric pressure reference in hPa, range are from 750 hPa to 1150 hPa
@@ -128,7 +126,7 @@ uint16_t    set_pressure_ref(uint16_t press_ref)
     return (pressure_ref_read);
 }
 
-uint16_t    get_pressure_ref()
+uint16_t    PASCO2_Lib::getpressureRef()
 {
     uint16_t pressure_ref = 0;
     uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
@@ -139,7 +137,7 @@ uint16_t    get_pressure_ref()
     return (pressure_ref);
 }
 
-uint8_t set_op_mode(uint8_t op_mode)
+uint8_t PASCO2_Lib::setOpMode(uint8_t op_mode)
 {
     // If SINGLE is set new operating mode can't be set until a certain amount of time (maybe 920ms)
     uint8_t actual_cfg;
@@ -155,7 +153,7 @@ uint8_t set_op_mode(uint8_t op_mode)
     return (actual_cfg);
 }
 
-uint8_t set_meas_rate(uint16_t meas_rate)
+uint8_t PASCO2_Lib::setMeasRate(uint16_t meas_rate)
 {
     // Measurement rate must be between 5s and 4095s
     // Compute hex values (H & L) from uint16_t meas_rate using 2's complement principle
@@ -181,7 +179,7 @@ uint8_t set_meas_rate(uint16_t meas_rate)
     return (meas_rate_read);
 }
 
-uint8_t get_meas_rate()
+uint8_t PASCO2_Lib::getMeasRate()
 {
     // Measurement rate must be between 5s and 4095s
     // Get measurement rate
@@ -194,35 +192,38 @@ uint8_t get_meas_rate()
     return (meas_rate);
 }
 
-uint16_t    get_co2_concentration()
+/*!
+ * @brief Gets the CO2 concentration over I2C from the XENSIV™ PASCO2 sensor
+ * @return Returns the CO2 concentration in ppm
+ */
+uint16_t    PASCO2_Lib::getCO2Concentration()
 {
     // Get CO2 concentration in ppm
-    uint16_t co2_concentration = 0;
     uint8_t co2_concentration_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_H);
     delay(5);
     uint8_t co2_concentration_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_L);
     delay(5);
 
     // Set MEAS_STS.INT_STS_CLR register to force pin INT to inactive level
-    reset_interrupt_pin();
+    resetInterruptPin();
 
-    co2_concentration = co2_concentration_h << 8 | co2_concentration_l;
+    co2Concentration = co2_concentration_h << 8 | co2_concentration_l;
 
-    return (co2_concentration);
+    return (co2Concentration);
 }
 
-bool    check_drdy()
+bool    PASCO2_Lib::checkDataReady()
 {
     uint8_t reg_sts = 0;
     bool drdy_sts;
     reg_sts = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
 
-    drdy_sts = (reg_sts & 0x10) >> 4;
+    drdy_sts = (reg_sts & XENSIV_PASCO2_REG_MEAS_STS_DRDY_MSK) >> XENSIV_PASCO2_REG_MEAS_STS_DRDY_POS;
 
     return (drdy_sts);
 }
 
-uint8_t set_interrupt_reg(uint8_t int_cfg)
+uint8_t PASCO2_Lib::setInterruptReg(uint8_t int_cfg)
 {
     uint8_t value_to_set = 0;
 
@@ -241,7 +242,7 @@ uint8_t set_interrupt_reg(uint8_t int_cfg)
     return (value_to_set);
 }
 
-uint8_t reset_interrupt_pin()
+uint8_t PASCO2_Lib::resetInterruptPin()
 {
     uint8_t reg_to_set = 0;
 
@@ -253,7 +254,7 @@ uint8_t reset_interrupt_pin()
     return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS, reg_to_set));
 }
 
-uint8_t reset_alarm_notif()
+uint8_t PASCO2_Lib::resetAlarmNotif()
 {
     uint8_t reg_to_set = 0;
 
@@ -265,7 +266,7 @@ uint8_t reset_alarm_notif()
     return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS, reg_to_set));
 }
 
-uint16_t get_alarm_threshold()
+uint16_t    PASCO2_Lib::getAlarmThreshold()
 {
     uint16_t    result = 0;
     uint8_t     result_h;
@@ -279,7 +280,7 @@ uint16_t get_alarm_threshold()
     return (result);
 }
 
-uint16_t    set_alarm_threshold(uint16_t alarm_thres)
+uint16_t    PASCO2_Lib::setAlarmThreshold(uint16_t alarm_thres)
 {
     // Set alarm threshold
 
@@ -302,4 +303,3 @@ uint16_t    set_alarm_threshold(uint16_t alarm_thres)
 
     return (alarm_thres_read);
 }
-

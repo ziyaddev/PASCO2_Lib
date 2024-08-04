@@ -1,9 +1,11 @@
 #ifndef PASCO2_LIB_HPP
 # define PASCO2_LIB_HPP
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
+#include <Arduino.h>
+#include <Adafruit_I2CDevice.h>
+#include <Adafruit_I2CRegister.h>
+#include <Adafruit_BusIO_Register.h>
+#include <Wire.h>
 
 #include "xensiv_pasco2_regs.hpp"
 
@@ -59,42 +61,38 @@
 
 #define XENSIV_PASCO2_MEAS_RATE_SET         (5U)
 
-/*
 class PASCO2_Lib {
     public:
         PASCO2_Lib();
 
         bool begin(uint8_t addr = XENSIV_PASCO2_I2C_ADDR, TwoWire *wire = &Wire);
 
-        void triggerMeasurement(void);
-        
-}
-*/
+        uint8_t     getDeviceProductId();
+        uint8_t     getDeviceRevisionId();
+        uint8_t     getDeviceStatus();
+        uint8_t     clearDeviceErrors();
+        uint16_t    setPressureRef(uint16_t press_ref);
+        uint16_t    getpressureRef();
+        uint8_t     setOpMode(uint8_t op_mode);
+        uint8_t     setMeasRate(uint16_t meas_rate);
+        uint8_t     getMeasRate();
+        uint16_t    getCO2Concentration();
+        bool        checkDataReady();
+        uint8_t     setInterruptReg(uint8_t int_cfg);
+        uint8_t     resetInterruptPin();
+        uint8_t     resetAlarmNotif();
+        uint16_t    getAlarmThreshold();
+        uint16_t    setAlarmThreshold(uint16_t alarm_thres);
 
-// Prototypes declarations
-uint8_t     read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr);
-uint8_t     write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data);
-uint8_t     get_device_product_id();
-uint8_t     get_device_revision_id();
-uint8_t     clear_device_errors();
-uint8_t     get_device_status();
-uint16_t    set_pressure_ref(uint16_t press_ref);
-uint16_t    get_pressure_ref();
-uint8_t     set_op_mode(uint8_t op_mode);
-uint8_t     set_meas_rate(uint16_t meas_rate);
-uint8_t     get_meas_rate();
-uint16_t    get_co2_concentration();
-bool        check_drdy();
-uint8_t     set_interrupt_reg(uint8_t int_cfg);
-uint8_t     reset_interrupt_pin();
-uint8_t     reset_alarm_notif();
-uint16_t    get_alarm_threshold();
-uint16_t    set_alarm_threshold(uint16_t alarm_thres);
+    private:
+        uint16_t    co2Concentration = 0;
+        uint8_t     read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr);
+        uint8_t     write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data);
+        Adafruit_I2CDevice *i2c_dev = NULL; // < Pointer to I2c bus interface
+};
 
 // To-do :
 // Automatic Baseline Offset Correction
 // Forced compensation
-
-
 
 #endif
