@@ -93,20 +93,19 @@ uint8_t get_device_status()
     return (read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS));
 }
 
-uint8_t reset_device_status()
+uint8_t clear_device_errors()
 {
-    uint8_t bit_to_set = 0;
-    bit_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS);
+    uint8_t bits_to_set;
 
-    // bit_to_set &= ~(1 << 1);
-    bit_to_set = 0xC0;
-    return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS, bit_to_set));
+    bits_to_set = XENSIV_PASCO2_REG_SENS_STS_ICCER_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORVS_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORTMP_CLR_MSK;
+
+    return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS, bits_to_set));
 }
 
 uint16_t    set_pressure_ref(uint16_t press_ref)
 {
-    // Compute hex values (H & L) from int pressure ref
-    // Set atmospheric pressure reference
+    // Compute hex values (H & L) from unsigned short int pressure ref
+    // Set atmospheric pressure reference in hPa, range are from 750 hPa to 1150 hPa
     // To update the pressure value, the user has to write first PRES_REF_H and then PRES_REF_L.
 
     uint8_t press_to_set_l = 0;

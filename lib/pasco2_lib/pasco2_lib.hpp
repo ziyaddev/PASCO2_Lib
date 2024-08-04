@@ -76,7 +76,7 @@ uint8_t     read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr);
 uint8_t     write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data);
 uint8_t     get_device_product_id();
 uint8_t     get_device_revision_id();
-uint8_t     reset_device_status();
+uint8_t     clear_device_errors();
 uint8_t     get_device_status();
 uint16_t    set_pressure_ref(uint16_t press_ref);
 uint16_t    get_pressure_ref();
