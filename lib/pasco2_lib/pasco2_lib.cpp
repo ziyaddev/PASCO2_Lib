@@ -62,6 +62,36 @@ uint8_t write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t d
     return Wire.endTransmission(true);
 }
 
+uint8_t get_device_product_id()
+{
+    // Gets device product ID and return :
+    // - 2 for PAS CO2 Gen 1
+    // - 3 for PAS CO2 Gen 1.5
+    uint8_t prod_id;
+
+    prod_id = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PROD_ID);
+    prod_id &= XENSIV_PASCO2_REG_PROD_ID_PROD_MSK;
+    prod_id = (prod_id >> 5);
+    return (prod_id);
+}
+
+uint8_t get_device_revision_id()
+{
+    // Gets device revision ID and return :
+    // - 1 for revision 1
+    // - 2 for revision 2
+    // - 3 ...
+    uint8_t rev_id;
+
+    rev_id = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PROD_ID);
+    rev_id &= XENSIV_PASCO2_REG_PROD_ID_REV_MSK;
+    return (rev_id);
+}
+// p p p r  r r r r
+// 0 1 1 0  0 1 0 1
+// &
+// 1 1 1 0  0 0 0 0
+
 uint8_t get_device_status()
 {
     return (read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS));
