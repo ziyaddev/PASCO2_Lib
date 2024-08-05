@@ -4,7 +4,7 @@ PASCO2_Lib::PASCO2_Lib() {}
 
 /*!
  * @brief Starts I2C connection
- * @param addr I2C address of the HDC2080
+ * @param addr I2C address of the PASCO2 sensor
  * @param wire The TwoWire master, defaults to &Wire
  * @return Returns true if successful
  */
