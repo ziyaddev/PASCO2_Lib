@@ -100,8 +100,4 @@ class PASCO2_Lib {
         Adafruit_I2CDevice *i2c_dev = NULL; // < Pointer to I2c bus interface
 };
 
-// To-do :
-// Automatic Baseline Offset Correction
-// Forced compensation
-
 #endif
