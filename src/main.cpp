@@ -38,6 +38,7 @@ PASCO2_Lib co2sensor;
 
 #define PRESS_REFERENCE 980
 #define ALARM_THRESHOLD 1000
+#define INT_PIN 2
 
 void setup()
 {
@@ -49,10 +50,12 @@ void setup()
         Serial.println("\nFailed to initialize i2c bus !\n");
     Serial.println("\nI2C init OK\n");
     Serial.println("3s delay ...");
+    pinMode(INT_PIN, INPUT_PULLUP);
     delay(3000);
 
     // Set the bus timeout given in milliseconds. The default value is 50ms.
     // Wire.setTimeOut(100);
+    Serial.printf("\nDevice status : 0x%X\n", co2sensor.getDeviceStatus());
 
     // Initialize the XENSIV™ PASCO2 sensor
     co2sensor.begin();
@@ -97,16 +100,25 @@ void setup()
 
     // Set measurement rate
     Serial.printf("\nMeasurement rate before  : %u", co2sensor.getMeasRate());
-    Serial.printf("\nMeasurement rate setting : %u", co2sensor.setMeasRate(XENSIV_PASCO2_MEAS_RATE_SET));
+    Serial.printf("\nMeasurement rate setting : %u", co2sensor.setMeasRate(10));
     Serial.printf("\nMeasurement rate after   : %u\n", co2sensor.getMeasRate());
 
     // Set operating mode in MEAS_CFG register
     Serial.printf("Operating mode [IDLE]       : 0x%X\n\n", co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_IDLE));
     delay(400);
+    Serial.printf("Get Operating mode          : 0x%X\n\n", co2sensor.getOpMode());
+    delay(400);
 
-    Serial.printf("Operating mode [SINGLE]     : 0x%X\n\n", co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_SINGLE));
+    // Serial.printf("Operating mode [SINGLE]     : 0x%X\n\n", co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_SINGLE));
+    // delay(400);
 
-    // Serial.printf("- Operating mode [CONTINUOUS] : 0x%X\n\n", co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_CONTINUOUS));
+    // Serial.printf("Get Operating mode          : 0x%X\n\n", co2sensor.getOpMode());
+    // delay(400);
+
+    Serial.printf("Operating mode [CONTINUOUS] : 0x%X\n\n", co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_CONTINUOUS));
+    delay(400);
+    Serial.printf("Get Operating mode          : 0x%X\n\n", co2sensor.getOpMode());
+    delay(400);
 
     Serial.printf("\nGet Baseline Offset Compensation Configuration : %d\n", co2sensor.getBaselineOffsetCompensationCfg());
     delay(2000);
@@ -114,10 +126,21 @@ void setup()
 
 void loop()
 {
-    if (co2sensor.checkDataReady())
-    {
-        Serial.printf("\nRead co2 concentration : %u ppm\n", co2sensor.getCO2Concentration());
-    }
+    // if (co2sensor.checkDataReady())
+    // {
+    // }
+    Serial.printf("digital read : %d\n", digitalRead(INT_PIN));
+    Serial.printf("data ready ? > 0x%x\n\n", co2sensor.checkDataReady());
+    delay(300);
+    // Serial.printf("get op mode : 0x%x\n",co2sensor.getOpMode());
+    Serial.printf("set op mode : 0x%x\n",co2sensor.setOpMode(XENSIV_PASCO2_OP_MODE_SINGLE));
+    // Serial.printf("get op mode : 0x%x\n\n",co2sensor.getOpMode());
+    delay(300);
+    Serial.printf("digital read : %d\n", digitalRead(INT_PIN));
+    Serial.printf("data ready ? > 0x%x\n", co2sensor.checkDataReady());
+
+    delay(300);
+    Serial.printf("\nRead co2 concentration : %u ppm\n\n\n", co2sensor.getCO2Concentration());
     delay(15000);
 }
 

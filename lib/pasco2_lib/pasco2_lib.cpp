@@ -224,14 +224,19 @@ uint8_t PASCO2_Lib::setOpMode(uint8_t op_mode)
 
     // Reset the 1st & 2nd bits to 0
     reg_to_set &= ~(XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK << XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+    delay(50);
 
     // Set operating mode
     reg_to_set |= op_mode;
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, reg_to_set);
+    // Serial.printf("reg to set : 0x%x\n", reg_to_set);
+    Serial.printf("flag\n");
+    delay(1000);
+    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, op_mode);
+    delay(1000);
+    Serial.printf("flag2\n");
 
     // Check if the register are set correctly
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
-    reg_to_set &= (XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+    reg_to_set = getOpMode();
 
     return (reg_to_set);
 }
@@ -283,12 +288,12 @@ uint16_t    PASCO2_Lib::getCO2Concentration()
 {
     // Get CO2 concentration in ppm
     uint8_t co2_concentration_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_H);
-    delay(5);
+    delay(50);
     uint8_t co2_concentration_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_L);
-    delay(5);
+    delay(50);
 
     // Set MEAS_STS.INT_STS_CLR register to force pin INT to inactive level
-    resetInterruptPin();
+    Serial.printf("reset int pin : 0x%x\n",resetInterruptPin());
 
     co2Concentration = (co2_concentration_h << 8) | co2_concentration_l;
 
