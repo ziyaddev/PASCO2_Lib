@@ -2,37 +2,6 @@
 
 PASCO2_Lib::PASCO2_Lib() {}
 
-/*!
- * @brief Starts I2C connection
- * @param addr I2C address of the PASCO2 sensor
- * @param wire The TwoWire master, defaults to &Wire
- * @return Returns true if successful
- */
-bool PASCO2_Lib::begin(uint8_t addr, TwoWire *wire)
-{
-    if (i2c_dev)
-    {
-        delete i2c_dev; // remove old inteface
-    }
-    i2c_dev = new Adafruit_I2CDevice(addr, wire);
-
-    /* Try to instantiate the I2C device. */
-    if (!i2c_dev->begin(false))
-    {
-        return false;
-    }
-
-    softReset();
-
-    uint8_t device_prod_id;
-    device_prod_id = getDeviceProductId();
-
-    uint8_t revision_id;
-    revision_id = getDeviceRevisionId();
-
-    return true;
-}
-
 uint8_t PASCO2_Lib::read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr)
 {
     // This function writes data to the buffer.
@@ -50,6 +19,7 @@ uint8_t PASCO2_Lib::read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr
     // Calling the this function without sendStop is equivalent to sendStop = true.
     // uint8_t endTransmission(void);
 
+    delay(400);
     Wire.beginTransmission(i2c_dev_addr);
     Wire.write(i2c_reg_addr);
     Wire.endTransmission();
@@ -63,11 +33,63 @@ uint8_t PASCO2_Lib::read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr
 
 uint8_t PASCO2_Lib::write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data)
 {
+    delay(400);
     Wire.beginTransmission(i2c_dev_addr);
     Wire.write(i2c_reg_addr);
     Wire.write(data);
 
     return Wire.endTransmission(true);
+}
+
+/*!
+ * @brief Reads to specified register
+ */
+uint8_t PASCO2_Lib::readReg(uint8_t regAddr) {
+    Adafruit_BusIO_Register reg8 =
+        Adafruit_BusIO_Register(i2c_dev, regAddr, 1);
+    uint8_t read_result = reg8.read();
+    delay(15);
+    return (read_result);
+}
+
+/*!
+ * @brief Writes to specified register
+ * @param config Configuration settings to be written
+ */
+void PASCO2_Lib::writeReg(uint8_t config, uint8_t regAddr) {
+    Adafruit_BusIO_Register reg8 =
+        Adafruit_BusIO_Register(i2c_dev, regAddr, 1);
+    reg8.write(config, 1);
+    delay(15);
+}
+
+/*!
+ * @brief Starts I2C connection
+ * @param addr I2C address of the PASCO2 sensor
+ * @param wire The TwoWire master, defaults to &Wire
+ * @return Returns true if successful
+ */
+bool PASCO2_Lib::begin(uint8_t addr, TwoWire *wire)
+{
+    Serial.println("sensor init begin");
+    if (i2c_dev)
+    {
+        delete i2c_dev; // remove old inteface
+    }
+    i2c_dev = new Adafruit_I2CDevice(addr, wire);
+
+    /* Try to instantiate the I2C device. */
+    if (!i2c_dev->begin(false))
+    {
+        return false;
+    }
+
+    softReset();
+
+    delay(800);
+
+    setOpMode(XENSIV_PASCO2_OP_MODE_IDLE);
+    return true;
 }
 
 uint8_t PASCO2_Lib::getDeviceProductId()
@@ -77,7 +99,7 @@ uint8_t PASCO2_Lib::getDeviceProductId()
     // - 3 for PAS CO2 Gen 1.5
     uint8_t prod_id;
 
-    prod_id = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PROD_ID);
+    prod_id = readReg(XENSIV_PASCO2_REG_PROD_ID);
     prod_id &= XENSIV_PASCO2_REG_PROD_ID_PROD_MSK;
     prod_id = (prod_id >> 5);
     return (prod_id);
@@ -91,7 +113,7 @@ uint8_t PASCO2_Lib::getDeviceRevisionId()
     // - 3 ...
     uint8_t rev_id;
 
-    rev_id = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PROD_ID);
+    rev_id = readReg(XENSIV_PASCO2_REG_PROD_ID);
     rev_id &= XENSIV_PASCO2_REG_PROD_ID_REV_MSK;
     return (rev_id);
 }
@@ -99,30 +121,31 @@ uint8_t PASCO2_Lib::getDeviceRevisionId()
 void PASCO2_Lib::softReset()
 {
     // Soft reset the sensor
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_RST, 0xA3);
+    writeReg(0xA3, XENSIV_PASCO2_REG_SENS_RST);
 }
 
 uint8_t PASCO2_Lib::getDeviceStatus()
 {
-    return (read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS));
+    uint8_t dev_status = 0;
+    dev_status = readReg(XENSIV_PASCO2_REG_SENS_STS);
+
+    return (dev_status);
 }
 
-uint8_t PASCO2_Lib::clearDeviceErrors()
+void PASCO2_Lib::clearDeviceErrors()
 {
     uint8_t bits_to_set;
 
     bits_to_set = XENSIV_PASCO2_REG_SENS_STS_ICCER_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORVS_CLR_MSK + XENSIV_PASCO2_REG_SENS_STS_ORTMP_CLR_MSK;
 
-    return (write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_SENS_STS, bits_to_set));
+    return (writeReg(bits_to_set, XENSIV_PASCO2_REG_SENS_STS));
 }
 
 uint16_t    PASCO2_Lib::getpressureRef()
 {
     uint16_t pressure_ref = 0;
-    uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
-    uint8_t press_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L);
 
-    pressure_ref = (press_h << 8) | press_l;
+    pressure_ref = (readReg(XENSIV_PASCO2_REG_PRESS_REF_H) << 8) | readReg(XENSIV_PASCO2_REG_PRESS_REF_L);
 
     return (pressure_ref);
 }
@@ -138,16 +161,12 @@ uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
     press_to_set_l = press_ref &0xFFU;
     press_to_set_h = (press_ref &0xFF00U) >> 8;
 
-    // Set new pressure reference value 757 hPa
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H, press_to_set_h);
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L, press_to_set_l);
+    // Set new pressure reference value
+    writeReg(press_to_set_h, XENSIV_PASCO2_REG_PRESS_REF_H);
+    writeReg(press_to_set_l, XENSIV_PASCO2_REG_PRESS_REF_L);
 
     // Check if the register are set correctly
-    uint8_t press_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_H);
-    uint8_t press_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_PRESS_REF_L);
-    
-    uint16_t pressure_ref_read = 0;
-    pressure_ref_read = press_h << 8 | press_l;
+    uint16_t pressure_ref_read = getpressureRef();
 
     return (pressure_ref_read);
 }
@@ -162,8 +181,7 @@ uint16_t    PASCO2_Lib::setPressureRef(uint16_t press_ref)
 uint8_t PASCO2_Lib::getBaselineOffsetCompensationCfg()
 {
     uint8_t boc_cfg = 0;
-    boc_cfg = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
-
+    boc_cfg = readReg(XENSIV_PASCO2_REG_MEAS_CFG);
     boc_cfg &= (XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_POS);
 
     return (boc_cfg);
@@ -180,17 +198,17 @@ uint8_t PASCO2_Lib::getBaselineOffsetCompensationCfg()
 uint8_t PASCO2_Lib::setBaselineOffsetCompensationCfg(uint8_t boc_cfg)
 {
     uint8_t reg_to_set = 0;
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_CFG);
 
     // Reset the 3rd & 4th bits to 0
     reg_to_set &= ~(XENSIV_PASCO2_REG_MEAS_CFG_BOC_CFG_MSK);
 
     // Set register with parameter value
     reg_to_set |= boc_cfg;
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, reg_to_set);
+    writeReg(reg_to_set, XENSIV_PASCO2_REG_MEAS_CFG);
 
     // Check if the register are set correctly
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+    reg_to_set = getBaselineOffsetCompensationCfg();
 
     return (reg_to_set);
 }
@@ -203,7 +221,7 @@ uint8_t PASCO2_Lib::setBaselineOffsetCompensationCfg(uint8_t boc_cfg)
 uint8_t PASCO2_Lib::getOpMode()
 {
     uint8_t op_mode = 0;
-    op_mode = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+    op_mode = readReg(XENSIV_PASCO2_REG_MEAS_CFG);
 
     op_mode &= (XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK >> XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
 
@@ -216,29 +234,32 @@ uint8_t PASCO2_Lib::getOpMode()
  * @param op_mode XENSIV_PASCO2_OP_MODE_IDLE, XENSIV_PASCO2_OP_MODE_SINGLE, XENSIV_PASCO2_OP_MODE_CONTINUOUS
  * @return uint8_t 
  */
-uint8_t PASCO2_Lib::setOpMode(uint8_t op_mode)
+void PASCO2_Lib::setOpMode(uint8_t op_mode)
 {
     // If SINGLE is set new operating mode can't be set until a certain amount of time (maybe 920ms)
     uint8_t reg_to_set;
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG);
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_CFG);
 
     // Reset the 1st & 2nd bits to 0
     reg_to_set &= ~(XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_MSK << XENSIV_PASCO2_REG_MEAS_CFG_OP_MODE_POS);
+
     delay(50);
 
     // Set operating mode
     reg_to_set |= op_mode;
-    // Serial.printf("reg to set : 0x%x\n", reg_to_set);
-    Serial.printf("flag\n");
-    delay(1000);
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_CFG, op_mode);
-    delay(1000);
-    Serial.printf("flag2\n");
+    writeReg(op_mode, XENSIV_PASCO2_REG_MEAS_CFG);
+}
 
-    // Check if the register are set correctly
-    reg_to_set = getOpMode();
+uint8_t PASCO2_Lib::getMeasRate()
+{
+    // Measurement rate must be between 5s and 4095s
+    // Get measurement rate
 
-    return (reg_to_set);
+    uint16_t meas_rate = 0;
+
+    meas_rate = (readReg(XENSIV_PASCO2_REG_MEAS_RATE_H) << 8) | readReg(XENSIV_PASCO2_REG_MEAS_RATE_L);
+
+    return (meas_rate);
 }
 
 uint8_t PASCO2_Lib::setMeasRate(uint16_t meas_rate)
@@ -254,30 +275,14 @@ uint8_t PASCO2_Lib::setMeasRate(uint16_t meas_rate)
     meas_rate_to_set_h = (meas_rate &0xFF00U) >> 8;
 
     // Set new measurement rate value
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_H, meas_rate_to_set_h);
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_L, meas_rate_to_set_l);
+    writeReg(meas_rate_to_set_h, XENSIV_PASCO2_REG_MEAS_RATE_H);
+    writeReg(meas_rate_to_set_l, XENSIV_PASCO2_REG_MEAS_RATE_L);
 
     // Check if the register are set correctly
-    meas_rate_to_set_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_H);
-    meas_rate_to_set_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_L);
-    
     uint16_t meas_rate_read = 0;
-    meas_rate_read = (meas_rate_to_set_h << 8) | meas_rate_to_set_l;
+    meas_rate_read = getMeasRate();
 
     return (meas_rate_read);
-}
-
-uint8_t PASCO2_Lib::getMeasRate()
-{
-    // Measurement rate must be between 5s and 4095s
-    // Get measurement rate
-    uint16_t meas_rate = 0;
-    uint8_t meas_rate_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_H);
-    uint8_t meas_rate_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_RATE_L);
-
-    meas_rate = (meas_rate_h << 8) | meas_rate_l;
-
-    return (meas_rate);
 }
 
 /*!
@@ -287,13 +292,13 @@ uint8_t PASCO2_Lib::getMeasRate()
 uint16_t    PASCO2_Lib::getCO2Concentration()
 {
     // Get CO2 concentration in ppm
-    uint8_t co2_concentration_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_H);
+    uint8_t co2_concentration_h = readReg(XENSIV_PASCO2_REG_CO2PPM_H);
     delay(50);
-    uint8_t co2_concentration_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_CO2PPM_L);
+    uint8_t co2_concentration_l = readReg(XENSIV_PASCO2_REG_CO2PPM_L);
     delay(50);
 
     // Set MEAS_STS.INT_STS_CLR register to force pin INT to inactive level
-    Serial.printf("reset int pin : 0x%x\n",resetInterruptPin());
+    resetInterruptPin();
 
     co2Concentration = (co2_concentration_h << 8) | co2_concentration_l;
 
@@ -304,7 +309,7 @@ bool    PASCO2_Lib::checkDataReady()
 {
     uint8_t reg_sts = 0;
     bool drdy_sts;
-    reg_sts = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
+    reg_sts = readReg(XENSIV_PASCO2_REG_MEAS_STS);
 
     drdy_sts = (reg_sts & XENSIV_PASCO2_REG_MEAS_STS_DRDY_MSK) >> XENSIV_PASCO2_REG_MEAS_STS_DRDY_POS;
 
@@ -323,7 +328,7 @@ uint8_t PASCO2_Lib::getInterruptCfg()
 {
     uint8_t int_sts = 0;
 
-    int_sts = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_INT_CFG);
+    int_sts = readReg(XENSIV_PASCO2_REG_INT_CFG);
     int_sts &= XENSIV_PASCO2_REG_INT_CFG_INT_FUNC_MSK >> XENSIV_PASCO2_REG_INT_CFG_INT_FUNC_POS;
 
     return (int_sts);
@@ -339,17 +344,17 @@ uint8_t PASCO2_Lib::setInterruptReg(uint8_t int_cfg)
 {
     uint8_t value_to_set = 0;
 
-    value_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_INT_CFG);
+    value_to_set = readReg(XENSIV_PASCO2_REG_INT_CFG);
 
     // Reset the 2nd 3rd & 4th bits to 0
     value_to_set &= ~(XENSIV_PASCO2_REG_INT_CFG_INT_FUNC_MSK);
 
     // Set register
     value_to_set |= (int_cfg << 1);
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_INT_CFG, value_to_set);
-    
+    writeReg(value_to_set, XENSIV_PASCO2_REG_INT_CFG);
+
     // Check if the register are set correctly
-    value_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_INT_CFG);
+    value_to_set = getInterruptCfg();
 
     return (value_to_set);
 }
@@ -358,12 +363,12 @@ uint8_t PASCO2_Lib::resetInterruptPin()
 {
     uint8_t reg_to_set = 0;
 
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_STS);
     reg_to_set |= (XENSIV_PASCO2_REG_MEAS_STS_INT_STS_CLR_MSK);
 
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS, reg_to_set);
+    writeReg(reg_to_set, XENSIV_PASCO2_REG_MEAS_STS);
 
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_STS);
 
     return (reg_to_set);
 }
@@ -372,24 +377,24 @@ uint8_t PASCO2_Lib::resetAlarmNotif()
 {
     uint8_t reg_to_set = 0;
 
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_STS);
     reg_to_set |= (XENSIV_PASCO2_REG_MEAS_STS_ALARM_CLR_MSK);
 
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS, reg_to_set);
-    
-    reg_to_set = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_MEAS_STS);
+    writeReg(reg_to_set, XENSIV_PASCO2_REG_MEAS_STS);
+
+    reg_to_set = readReg(XENSIV_PASCO2_REG_MEAS_STS);
 
     return (reg_to_set);
 }
 
 uint16_t    PASCO2_Lib::getAlarmThreshold()
 {
-    uint16_t    result = 0;
+    uint16_t result = 0;
     uint8_t     result_h;
     uint8_t     result_l;
-    result_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_H);
+    result_h = readReg(XENSIV_PASCO2_REG_ALARM_TH_H);
     delay(5);
-    result_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_L);
+    result_l = readReg(XENSIV_PASCO2_REG_ALARM_TH_L);
     delay(5);
 
     result = (result_h << 8) | result_l;
@@ -406,16 +411,19 @@ uint16_t    PASCO2_Lib::setAlarmThreshold(uint16_t alarm_thres)
     reg_to_set_h = (alarm_thres &0xFF00U) >> 8;
 
     // Set new value
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_H, reg_to_set_h);
-    write_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_L, reg_to_set_l);
+    writeReg(reg_to_set_h, XENSIV_PASCO2_REG_ALARM_TH_H);
+    writeReg(reg_to_set_l, XENSIV_PASCO2_REG_ALARM_TH_L);
 
     // Check if the register are set correctly
-
-    uint8_t alarm_h = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_H);
-    uint8_t alarm_l = read_i2c_register(XENSIV_PASCO2_I2C_ADDR, XENSIV_PASCO2_REG_ALARM_TH_L);
-    
-    uint16_t alarm_thres_read = 0;
-    alarm_thres_read = alarm_h << 8 | alarm_l;
+    uint16_t alarm_thres_read = getAlarmThreshold();
 
     return (alarm_thres_read);
+}
+
+uint8_t PASCO2_Lib::getRegister(uint8_t reg)
+{
+    uint8_t reg_result = 0;
+
+    reg_result = readReg(reg);
+    return (reg_result);
 }

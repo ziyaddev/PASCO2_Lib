@@ -75,13 +75,13 @@ class PASCO2_Lib {
         uint8_t     getDeviceProductId();
         uint8_t     getDeviceRevisionId();
         uint8_t     getDeviceStatus();
-        uint8_t     clearDeviceErrors();
+        void        clearDeviceErrors();
         uint16_t    getpressureRef();
         uint16_t    setPressureRef(uint16_t press_ref);
         uint8_t     getBaselineOffsetCompensationCfg();
         uint8_t     setBaselineOffsetCompensationCfg(uint8_t boc_cfg);
         uint8_t     getOpMode();
-        uint8_t     setOpMode(uint8_t op_mode);
+        void        setOpMode(uint8_t op_mode);
         uint8_t     setMeasRate(uint16_t meas_rate);
         uint8_t     getMeasRate();
         uint16_t    getCO2Concentration();
@@ -92,11 +92,14 @@ class PASCO2_Lib {
         uint8_t     resetAlarmNotif();
         uint16_t    getAlarmThreshold();
         uint16_t    setAlarmThreshold(uint16_t alarm_thres);
+        uint8_t     getRegister(uint8_t reg);
 
     private:
         uint16_t    co2Concentration = 0;
         uint8_t     read_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr);
         uint8_t     write_i2c_register(uint8_t i2c_dev_addr, uint8_t i2c_reg_addr, uint8_t data);
+        void        writeReg(uint8_t config, uint8_t regAddr);
+        uint8_t     readReg(uint8_t regAddr);
         Adafruit_I2CDevice *i2c_dev = NULL; // < Pointer to I2c bus interface
 };
 
