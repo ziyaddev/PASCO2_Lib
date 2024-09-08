@@ -1,33 +1,6 @@
-//////////////////CLOUD BEGIN//////////////////
-#if defined(ESP32)
-#include <WiFiMulti.h>
-WiFiMulti wifiMulti;
-#define DEVICE "ESP32"
-#elif defined(ESP8266)
-#include <ESP8266WiFiMulti.h>
-ESP8266WiFiMulti wifiMulti;
-#define DEVICE "ESP8266"
-#endif
-//////////////////CLOUD END//////////////////
-
 #include <Arduino.h>
 #include <Wire.h>
 #include "pasco2_lib.hpp"
-
-//////////////////CLOUD BEGIN//////////////////
-#include <InfluxDbClient.h>
-#include <InfluxDbCloud.h>
-#include "creds.h"
-
-// Time zone info
-#define TZ_INFO "UTC1"
-
-// Declare InfluxDB client instance with preconfigured InfluxCloud certificate
-InfluxDBClient client(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN, InfluxDbCloud2CACert);
-
-// Declare Data point
-Point pasco2_sensor("iaq_sensor");
-//////////////////CLOUD END//////////////////
 
 // Initialize the XENSIV™ PASCO2 sensor object
 PASCO2_Lib co2sensor;
@@ -42,8 +15,6 @@ PASCO2_Lib co2sensor;
 
 void setup()
 {
-    delay(2000);
-
     Serial.begin(115200);
     Serial.println("\nSerial init OK");
     if (!Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ))
