@@ -17,15 +17,8 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println("\nSerial init OK");
-    if (!Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ))
-        Serial.println("\nFailed to initialize i2c bus !\n");
-    Serial.println("\nI2C init OK\n");
-    Serial.println("3s delay ...");
     pinMode(INT_PIN, INPUT_PULLUP);
-    delay(3000);
-
-    // Set the bus timeout given in milliseconds. The default value is 50ms.
-    // Wire.setTimeOut(100);
+    delay(2000);
 
     // Initialize the XENSIV™ PASCO2 sensor
     co2sensor.begin();

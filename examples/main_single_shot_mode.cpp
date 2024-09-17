@@ -17,10 +17,6 @@ void setup()
 {
     Serial.begin(115200);
     Serial.println("\nSerial init OK");
-    if (!Wire.begin(I2C_SDA, I2C_SCL, I2C_FREQ))
-        Serial.println("\nFailed to initialize i2c bus !\n");
-    else
-        Serial.println("\nI2C init OK\n");
     pinMode(INT_PIN, INPUT_PULLUP);
     Serial.println("2s delay ...");
     delay(2000);
@@ -47,10 +43,6 @@ void setup()
 
     // Set INT_CFG register as data ready notofication pin
     co2sensor.setInterruptReg(XENSIV_PASCO2_INT_FUNC_CFG_DRDY);
-
-    // Set measurement rate
-    Serial.printf("\nActual measurement rate : %u\n", co2sensor.getMeasRate());
-    Serial.printf("Setting measurement rate ... : %u\n", co2sensor.setMeasRate(30));
 
     Serial.printf("\nGet Baseline Offset Compensation Configuration : %d\n", co2sensor.getBaselineOffsetCompensationCfg());
     delay(2000);
